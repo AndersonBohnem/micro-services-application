@@ -1,5 +1,7 @@
 package org.insertcoin.productservice.controllers;
 
+import org.insertcoin.productservice.clients.CurrencyClient;
+import org.insertcoin.productservice.clients.CurrencyResponse;
 import org.insertcoin.productservice.entrities.ProductEntity;
 import org.insertcoin.productservice.repositories.ProductRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,10 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class OpenProductController {
 
     private final ProductRepository repository;
+    private final CurrencyClient currencyClient;
 
-    public OpenProductController(ProductRepository repository) {
+    public OpenProductController(ProductRepository repository, CurrencyClient currencyClient) {
         super();
         this.repository = repository;
+        this.currencyClient = currencyClient;
     }
 
     @Value("${server.port}")
@@ -32,7 +36,18 @@ public class OpenProductController {
         ProductEntity product = repository.findById(idProduct).orElseThrow(() -> new Exception("Product not found"));
 
         product.setEnviroment("Product-Service running on port: " + serverPort);
-        product.setConvertedPrice(product.getPrice()); // MOCK para teste
+
+        if(targetCurrency.equalsIgnoreCase(product.getCurrency())) {
+            product.setConvertedPrice(product.getPrice());
+        } else {
+            CurrencyResponse currency = currencyClient.getCurrency(
+                    product.getPrice(),
+                    product.getCurrency(),
+                    targetCurrency
+            );
+            product.setConvertedPrice(currency.getConvertedValue());
+            product.setEnviroment(product.getEnviroment() + " - " + currency.getEnviroment());
+        }
 
         return ResponseEntity.ok(product);
     }
