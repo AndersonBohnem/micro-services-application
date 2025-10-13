@@ -13,6 +13,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
+
 @RestController
 @RequestMapping("currency")
 public class CurrencyController {
@@ -59,7 +64,7 @@ public class CurrencyController {
                     double sourceRate = 1;
                     double targetRate = 1;
                     if(!source.equals("BRL")) {
-                        CurrencyBCResponse response = currencyBCClient.getCurrencyBC(source);
+                        CurrencyBCResponse response = getLastQuoteBC(source);
                         if(response.getValue().isEmpty()) {
                             throw new Exception();
                         }
@@ -67,7 +72,7 @@ public class CurrencyController {
                                 response.getValue().size() - 1).getCotacaoVenda();
                     }
                     if(!target.equals("BRL")) {
-                        CurrencyBCResponse response = currencyBCClient.getCurrencyBC(target);
+                        CurrencyBCResponse response = getLastQuoteBC(source);
                         if(response.getValue().isEmpty()) {
                             throw new Exception();
                         }
@@ -91,5 +96,38 @@ public class CurrencyController {
         return ResponseEntity.ok(currency);
     }
 
+    private CurrencyBCResponse getLastQuoteBC(String moeda) {
+        LocalDate date = LocalDate.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+        int max_attempts = 3;
+        int attempts = 0;
+
+        while (attempts < max_attempts) {
+            while (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY) {
+                date = date.minusDays(1);
+            }
+
+            String formattedDate = formatter.format(date);
+
+            try {
+                CurrencyBCResponse response = currencyBCClient.getCurrencyBC(moeda, formattedDate);
+
+                if (response.getValue() != null && !response.getValue().isEmpty()) {
+                    return response;
+                } else {
+                    date = date.minusDays(1);
+                    attempts++;
+                }
+
+            } catch (Exception e) {
+                date = date.minusDays(1);
+                attempts++;
+            }
+        }
+        CurrencyBCResponse fallback = new CurrencyBCResponse();
+        fallback.setValue(Collections.emptyList());
+        return fallback;
+    }
 
 }

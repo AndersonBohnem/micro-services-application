@@ -7,7 +7,7 @@ import java.util.Collections;
 @Component
 public class CurrencyBCFallback implements CurrencyBCClient{
     @Override
-    public CurrencyBCResponse getCurrencyBC(String coin) {
+    public CurrencyBCResponse getCurrencyBC(String moeda, String data) {
         CurrencyBCResponse currency = new CurrencyBCResponse();
         currency.setValue(Collections.emptyList());
         return currency;
