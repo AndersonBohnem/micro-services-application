@@ -98,7 +98,7 @@ public class CurrencyController {
 
     private CurrencyBCResponse getLastQuoteBC(String moeda) {
         LocalDate date = LocalDate.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd-yyyy");
 
         int max_attempts = 3;
         int attempts = 0;

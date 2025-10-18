@@ -19,6 +19,9 @@ public class ApiGatewayConfig {
                         .path("/currency/**")
                         .uri("lb://currency-service")
                 )
+                .route(p -> p
+                        .path("/greeting/**")
+                        .uri("lb://greeting-service"))
                 .build();
     }
 }
