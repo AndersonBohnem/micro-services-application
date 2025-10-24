@@ -36,38 +36,39 @@ public class OpenProductController {
             @PathVariable String targetCurrency
     ) throws Exception {
 
-        ProductEntity product = repository.findById(idProduct).orElseThrow(() -> new Exception("Product not found"));
+        String dataSource = "None";
+        String keyCache = idProduct + targetCurrency.toUpperCase();
+        String nameCache = "ProductCache";
 
-        product.setEnviroment("Product-Service running on port: " + serverPort);
+        ProductEntity product = cacheManager.getCache(nameCache).get(keyCache, ProductEntity.class);
 
-        if(targetCurrency.equalsIgnoreCase(product.getCurrency())) {
-            product.setConvertedPrice(product.getPrice());
+        if (product != null) {
+            dataSource = "Cache";
         } else {
-            String dataSource = "None";
-            String keyCache = idProduct + targetCurrency.toUpperCase();
-            String nameCache = "ProductCache";
+            product = repository.findById(idProduct)
+                    .orElseThrow(() -> new Exception("Product not found"));
+            cacheManager.getCache(nameCache).put(keyCache, product);
+            dataSource = "Database";
 
-            CurrencyResponse currency = cacheManager.getCache(nameCache).get(keyCache, CurrencyResponse.class);
+            product.setEnviroment("Product-Service running on port: " + serverPort + " - Source: " + dataSource);
 
-            if(currency != null) {
-                dataSource = "Cache";
+            if (targetCurrency.equalsIgnoreCase(product.getCurrency())) {
+                product.setConvertedPrice(product.getPrice());
             } else {
-                currency = currencyClient.getCurrency(
+                CurrencyResponse currency = currencyClient.getCurrency(
                         product.getPrice(),
                         product.getCurrency(),
                         targetCurrency
                 );
 
-                if (currency.getConvertedValue() != -1) {
-                    cacheManager.getCache(nameCache).put(keyCache, currency);
+                if (currency.getConvertedValue() == -1) {
+                    product.setEnviroment(product.getEnviroment() + " - Using fallback conversion");
+                    product.setConvertedPrice(product.getPrice());
+                } else {
+                    product.setConvertedPrice(currency.getConvertedValue());
+                    product.setEnviroment(product.getEnviroment() + " - Currency from: " + currency.getEnviroment());
                 }
-
-                dataSource = (currency.getConvertedValue() != -1) ? "currency-service" : "Fallback";
             }
-
-            dataSource = "Get Information: " + dataSource;
-            product.setConvertedPrice(currency.getConvertedValue());
-            product.setEnviroment(product.getEnviroment() + " - " + dataSource + " - " + currency.getEnviroment());
         }
 
         return ResponseEntity.ok(product);
