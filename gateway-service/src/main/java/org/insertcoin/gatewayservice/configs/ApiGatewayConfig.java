@@ -22,6 +22,9 @@ public class ApiGatewayConfig {
                 .route(p -> p
                         .path("/greeting/**")
                         .uri("lb://greeting-service"))
+                .route(p -> p
+                        .path("/auth/**")
+                        .uri("lb://auth-service"))
                 .build();
     }
 }
