@@ -6,11 +6,15 @@ import org.insertcoin.productservice.entrities.ProductEntity;
 import org.insertcoin.productservice.repositories.ProductRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("products")
@@ -73,4 +77,33 @@ public class OpenProductController {
 
         return ResponseEntity.ok(product);
     }
+
+    @GetMapping("/noconverter/{idProduct}")
+    public ResponseEntity<ProductEntity> getNoConverter(
+            @PathVariable Long idProduct
+    ) throws Exception {
+        var product = repository.findById(idProduct).orElseThrow(() -> new Exception("Produto não encontrado"));
+        product.setConvertedPrice(-1);
+        product.setEnviroment("Product-Service running on port: " + serverPort);
+        return ResponseEntity.ok(product);
+    }
+
+    @GetMapping("/{targetCurrency}")
+    public ResponseEntity<Page<ProductEntity>> getAllProducts(
+            @PathVariable String targetCurrency,
+            @PageableDefault(page = 0, size = 5, sort = "description", direction = Sort.Direction.ASC) Pageable pageable
+    ) throws Exception {
+        Page<ProductEntity> products = repository.findAll((org.springframework.data.domain.Pageable) pageable);
+
+        for(ProductEntity product : products) {
+            CurrencyResponse currency = currencyClient.getCurrency(product.getPrice(), product.getCurrency(), targetCurrency);
+
+            product.setConvertedPrice(currency.getConvertedValue());
+
+            product.setEnviroment("Product-Service running on port: " + serverPort + " - " + currency.getEnviroment());
+        }
+        return ResponseEntity.ok(products);
+    }
+
+
 }
